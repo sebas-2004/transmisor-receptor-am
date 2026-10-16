@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from senales import generar_tono, generar_portadora
+from senales import generar_tono, generar_portadora, modular_am, envolvente_am
 
 # Carpeta results/ (funciona sin importar desde dónde se ejecute)
 RESULTS = Path(__file__).resolve().parent.parent / "results"
@@ -64,5 +64,38 @@ for a in ax:
 
 plt.tight_layout()
 plt.savefig(RESULTS / "02_mensaje_y_portadora.png", dpi=150)
+# ---------- 3. Modulación AM con distintos índices ----------
+indices = [0.5, 1.0, 1.5]
 
+fig, ax = plt.subplots(len(indices), 1, figsize=(10, 9), sharex=True)
+
+print("\n=== Modulación AM ===")
+for i, mu in enumerate(indices):
+    s = modular_am(m, c, mu)
+    env = envolvente_am(m, mu, Ac)
+
+    # Fracción de la potencia que va en las bandas laterales (las que llevan el mensaje)
+    eficiencia = mu**2 / (2 + mu**2) * 100
+
+    if mu < 1:
+        estado = "submodulación"
+    elif mu == 1:
+        estado = "modulación al 100 %"
+    else:
+        estado = "SOBREMODULACIÓN"
+
+    print(f"mu = {mu}: max = {s.max():.2f} | min = {s.min():.2f} | "
+          f"envolvente mín = {env.min():.2f} | eficiencia = {eficiencia:.1f} % -> {estado}")
+
+    ax[i].plot(t * 1000, s, color="tab:green", linewidth=0.8, label="s(t)")
+    ax[i].plot(t * 1000, env, "r--", label="Envolvente Ac[1+μm(t)]")
+    ax[i].plot(t * 1000, -env, "r--")
+    ax[i].set_title(f"Señal AM con μ = {mu} ({estado})")
+    ax[i].set_ylabel("Amplitud")
+    ax[i].grid(True)
+    ax[i].legend(loc="upper right")
+
+ax[-1].set_xlabel("Tiempo (ms)")
+plt.tight_layout()
+plt.savefig(RESULTS / "03_am_indices_modulacion.png", dpi=150)
 plt.show()   # muestra todas las figuras; cerrarlas para terminar
