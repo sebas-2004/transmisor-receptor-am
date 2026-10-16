@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from senales import (generar_tono, generar_portadora, modular_am, envolvente_am, potencia, agregar_ruido)
+from senales import (generar_tono, generar_portadora, modular_am, envolvente_am, potencia, agregar_ruido, detector_envolvente)
 
 # Carpeta results/ (funciona sin importar desde dónde se ejecute)
 RESULTS = Path(__file__).resolve().parent.parent / "results"
@@ -134,5 +134,56 @@ ax[-1].set_xlabel("Tiempo (ms)")
 
 plt.tight_layout()
 plt.savefig(RESULTS / "04_am_con_ruido.png", dpi=150)
+
+# ---------- 5. Receptor: detector de envolvente ----------
+fcorte = 400   # Hz: debe cumplir fm < fcorte << fc
+
+# 5a. Etapas del receptor (caso sin ruido) para ver qué hace cada paso
+s = modular_am(m, c, mu_trabajo)
+m_rec, rect, env_est = detector_envolvente(s, fs, fcorte, mu_trabajo, Ac)
+
+fig, ax = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+ax[0].plot(t * 1000, s, color="tab:green", linewidth=0.8)
+ax[0].set_title("1) Señal AM recibida s(t)")
+ax[1].plot(t * 1000, rect, color="tab:purple", linewidth=0.8, label="|s(t)|")
+ax[1].plot(t * 1000, env_est, "r", linewidth=2, label="Envolvente estimada (pasabajos)")
+ax[1].set_title(f"2) Rectificación y filtro pasabajos (fcorte = {fcorte} Hz)")
+ax[1].legend(loc="upper right")
+ax[2].plot(t * 1000, m, "k--", label="Mensaje original m(t)")
+ax[2].plot(t * 1000, m_rec, color="tab:blue", label="Mensaje recuperado")
+ax[2].set_title("3) Mensaje recuperado vs original")
+ax[2].legend(loc="upper right")
+for a in ax:
+    a.set_ylabel("Amplitud")
+    a.grid(True)
+ax[-1].set_xlabel("Tiempo (ms)")
+plt.tight_layout()
+plt.savefig(RESULTS / "05_etapas_receptor.png", dpi=150)
+
+# 5b. Comparación en distintas condiciones
+casos = [
+    ("Sin ruido, μ = 0.8", s, mu_trabajo),
+    ("SNR = 20 dB, μ = 0.8", agregar_ruido(s, 20, semilla)[0], mu_trabajo),
+    ("SNR = 5 dB, μ = 0.8", agregar_ruido(s, 5, semilla)[0], mu_trabajo),
+    ("Sin ruido, μ = 1.5 (sobremodulación)", modular_am(m, c, 1.5), 1.5),
+]
+
+print("\n=== Receptor (detector de envolvente) ===")
+fig, ax = plt.subplots(len(casos), 1, figsize=(10, 10), sharex=True)
+for i, (nombre, r, mu_caso) in enumerate(casos):
+    m_rec, _, _ = detector_envolvente(r, fs, fcorte, mu_caso, Ac)
+    ecm = np.mean((m - m_rec) ** 2)        # error cuadrático medio
+    corr = np.corrcoef(m, m_rec)[0, 1]      # parecido de forma (1 = idéntico)
+    print(f"{nombre:40s} | ECM = {ecm:.5f} | correlación = {corr:.4f}")
+
+    ax[i].plot(t * 1000, m, "k--", label="Original")
+    ax[i].plot(t * 1000, m_rec, color="tab:blue", label="Recuperado")
+    ax[i].set_title(f"{nombre}  (ECM = {ecm:.4f})")
+    ax[i].set_ylabel("Amplitud")
+    ax[i].grid(True)
+    ax[i].legend(loc="upper right")
+ax[-1].set_xlabel("Tiempo (ms)")
+plt.tight_layout()
+plt.savefig(RESULTS / "06_receptor_comparacion.png", dpi=150)
 
 plt.show()   # muestra todas las figuras
