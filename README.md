@@ -108,10 +108,10 @@ Aquí se ven los pasos del receptor: la señal recibida, después de rectificarl
 
 | Caso | ECM | Correlación |
 |---|---|---|
-| Sin ruido, μ = 0,8 | [ECM = 0.00907] | [correlacion = 0.9915] |
-| 20 dB  | [ECM = 0.00971] | [correlacion = 0.9908] |
-| 5 dB | [ ECM = 0.08191] | [correlación = 0.9711] |
-| Sin ruido, μ = 1,5 | [ECM = 0.06384] | [correlación = 0.9594] |
+| Sin ruido, μ = 0,8 | 0,00907 | 0,9915 |
+| 20 dB | 0,00971 | 0,9908 |
+| 5 dB | 0,08191 | 0,9711 |
+| Sin ruido, μ = 1,5 | 0,06384 | 0,9594 |
 
 Sin ruido sale casi igual al original (solo hay una diferencia al principio y al final por el filtro). Con 5 dB sale con ondas y un poco corrido hacia arriba, porque al rectificar el ruido también se vuelve positivo y suma. Lo más interesante es μ = 1,5: aunque no tiene ruido, sale mal, porque en los valles el mensaje "rebota" en vez de bajar. Con esto comprobé que la sobremodulación sí daña el mensaje.
 
