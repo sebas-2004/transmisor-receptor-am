@@ -13,3 +13,8 @@ def generar_tono(f, duracion, fs, amplitud=1.0):
     t = vector_tiempo(duracion, fs)
     m = amplitud * np.cos(2 * np.pi * f * t)
     return t, m
+def generar_portadora(fc, t, Ac=1.0):
+    """Genera la portadora c(t) = Ac * cos(2*pi*fc*t).
+    Usa el MISMO vector de tiempo t del mensaje, para que ambas
+    señales estén muestreadas en los mismos instantes."""
+    return Ac * np.cos(2 * np.pi * fc * t)
