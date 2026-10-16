@@ -86,3 +86,14 @@ def guardar_audio(ruta, x, fs):
     """Guarda una señal como .wav de 16 bits (normalizada para no saturar)."""
     x = x / np.max(np.abs(x))
     wavfile.write(ruta, fs, (x * 32767).astype(np.int16))
+
+def espectro(x, fs):
+    """Espectro de amplitud de un solo lado usando la FFT.
+    Devuelve las frecuencias f (Hz, de 0 a fs/2) y la amplitud |X[k]|*2/N,
+    escalada para que un cos de amplitud A produzca un pico de altura A."""
+    N = len(x)
+    X = np.fft.rfft(x)                     # FFT de una señal real (solo f >= 0)
+    f = np.fft.rfftfreq(N, d=1 / fs)       # f_k = k * fs / N
+    mag = np.abs(X) / N
+    mag[1:] *= 2                           # sumar la parte negativa del espectro (simétrica)
+    return f, mag
