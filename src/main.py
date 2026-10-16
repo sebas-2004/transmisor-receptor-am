@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from senales import generar_tono, generar_portadora, modular_am, envolvente_am
+from senales import (generar_tono, generar_portadora, modular_am, envolvente_am, potencia, agregar_ruido)
 
 # Carpeta results/ (funciona sin importar desde dónde se ejecute)
 RESULTS = Path(__file__).resolve().parent.parent / "results"
@@ -98,4 +98,41 @@ for i, mu in enumerate(indices):
 ax[-1].set_xlabel("Tiempo (ms)")
 plt.tight_layout()
 plt.savefig(RESULTS / "03_am_indices_modulacion.png", dpi=150)
-plt.show()   # muestra todas las figuras; cerrarlas para terminar
+
+# ---------- 4. Ruido en el canal (AWGN) ----------
+mu_trabajo = 0.8     # índice de modulación usado de aquí en adelante
+snrs = [20, 5]       # SNR a comparar (dB)
+semilla = 42         # semilla fija para que el ruido sea reproducible
+
+s = modular_am(m, c, mu_trabajo)
+env = envolvente_am(m, mu_trabajo, Ac)
+
+print("\n=== Ruido AWGN ===")
+print(f"mu = {mu_trabajo} | Potencia de la señal AM = {potencia(s):.4f}")
+
+fig, ax = plt.subplots(len(snrs) + 1, 1, figsize=(10, 9), sharex=True)
+
+ax[0].plot(t * 1000, s, color="tab:green", linewidth=0.8, label="s(t)")
+ax[0].plot(t * 1000, env, "r--", label="Envolvente ideal")
+ax[0].set_title(f"Señal AM sin ruido (μ = {mu_trabajo})")
+
+for i, snr in enumerate(snrs, start=1):
+    s_ruido, ruido = agregar_ruido(s, snr, semilla)
+    snr_medida = 10 * np.log10(potencia(s) / potencia(ruido))
+    print(f"SNR objetivo = {snr} dB | SNR medida = {snr_medida:.2f} dB | "
+          f"desv. estándar del ruido = {np.std(ruido):.3f}")
+
+    ax[i].plot(t * 1000, s_ruido, color="tab:gray", linewidth=0.6, label="s(t) + ruido")
+    ax[i].plot(t * 1000, env, "r--", label="Envolvente ideal")
+    ax[i].set_title(f"Señal AM con ruido AWGN, SNR = {snr} dB")
+
+for a in ax:
+    a.set_ylabel("Amplitud")
+    a.grid(True)
+    a.legend(loc="upper right")
+ax[-1].set_xlabel("Tiempo (ms)")
+
+plt.tight_layout()
+plt.savefig(RESULTS / "04_am_con_ruido.png", dpi=150)
+
+plt.show()   # muestra todas las figuras
