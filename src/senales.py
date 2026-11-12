@@ -97,3 +97,13 @@ def espectro(x, fs):
     mag = np.abs(X) / N
     mag[1:] *= 2                           # sumar la parte negativa del espectro (simétrica)
     return f, mag
+def receptor_coherente(r, t, fc, fs, fcorte, mu, Ac=1.0):
+    """Receptor AM coherente (síncrono).
+    1) Multiplica por una copia local de la portadora: r(t) * 2cos(2*pi*fc*t)
+       -> queda Ac[1 + mu*m(t)] en banda base + una copia en 2fc
+    2) Pasabajos para eliminar la componente en 2fc
+    3) Quitar el nivel DC y reescalar: m = (y/Ac - 1) / mu
+    Supone sincronización perfecta (misma frecuencia y fase que el transmisor)."""
+    mezcla = r * 2 * np.cos(2 * np.pi * fc * t)
+    banda_base = filtro_pasabajos(mezcla, fcorte, fs)
+    return (banda_base / Ac - 1) / mu
