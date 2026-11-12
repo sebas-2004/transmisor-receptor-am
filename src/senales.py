@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, resample_poly
 from scipy.io import wavfile
 
 
@@ -57,16 +57,36 @@ def filtro_pasabajos(x, fcorte, fs, orden=4):
     return filtfilt(b, a, x)
 
 
-def detector_envolvente(r, fs, fcorte, mu, Ac=1.0):
+def detector_envolvente(r, fs, fcorte, mu, Ac=1.0, sobremuestreo=1):
     """Receptor AM por detección de envolvente.
+    0) (Opcional) Sobremuestreo x L antes de rectificar: el valor absoluto es no lineal
+       y genera armónicos de la portadora (2fc, 4fc, ...) que pueden superar fs/2 y
+       producir aliasing dentro de la banda del mensaje. Con fs*L caben sin doblarse.
     1) Rectificación de onda completa: |r(t)|
-    2) Pasabajos para eliminar la portadora (x pi/2 porque el promedio de |cos| es 2/pi)
-    3) Quitar el nivel DC y reescalar: m = (env/Ac - 1) / mu
-    Devuelve el mensaje recuperado, la señal rectificada y la envolvente."""
+    2) Pasabajos (x pi/2 porque el promedio de |cos| es 2/pi)
+    3) Volver a la fs original, quitar el nivel DC y reescalar: m = (env/Ac - 1) / mu"""
+    L = sobremuestreo
+    if L > 1:
+        r = resample_poly(r, L, 1)            # interpolar: fs -> fs*L
     rectificada = np.abs(r)
-    env = (np.pi / 2) * filtro_pasabajos(rectificada, fcorte, fs)
+    env = (np.pi / 2) * filtro_pasabajos(rectificada, fcorte, fs * L)
+    if L > 1:
+        env = resample_poly(env, 1, L)        # volver a la fs original
+        rectificada = rectificada[::L]        # solo para poder graficarla
     m_rec = (env / Ac - 1) / mu
     return m_rec, rectificada, env
+
+
+def receptor_coherente(r, t, fc, fs, fcorte, mu, Ac=1.0):
+    """Receptor AM coherente (síncrono).
+    1) Multiplica por una copia local de la portadora: r(t) * 2cos(2*pi*fc*t)
+       -> queda Ac[1 + mu*m(t)] en banda base + una copia en 2fc
+    2) Pasabajos para eliminar la componente en 2fc
+    3) Quitar el nivel DC y reescalar: m = (y/Ac - 1) / mu
+    Supone sincronización perfecta (misma frecuencia y fase que el transmisor)."""
+    mezcla = r * 2 * np.cos(2 * np.pi * fc * t)
+    banda_base = filtro_pasabajos(mezcla, fcorte, fs)
+    return (banda_base / Ac - 1) / mu
 
 
 def cargar_audio(ruta):
@@ -87,6 +107,7 @@ def guardar_audio(ruta, x, fs):
     x = x / np.max(np.abs(x))
     wavfile.write(ruta, fs, (x * 32767).astype(np.int16))
 
+
 def espectro(x, fs):
     """Espectro de amplitud de un solo lado usando la FFT.
     Devuelve las frecuencias f (Hz, de 0 a fs/2) y la amplitud |X[k]|*2/N,
@@ -97,13 +118,3 @@ def espectro(x, fs):
     mag = np.abs(X) / N
     mag[1:] *= 2                           # sumar la parte negativa del espectro (simétrica)
     return f, mag
-def receptor_coherente(r, t, fc, fs, fcorte, mu, Ac=1.0):
-    """Receptor AM coherente (síncrono).
-    1) Multiplica por una copia local de la portadora: r(t) * 2cos(2*pi*fc*t)
-       -> queda Ac[1 + mu*m(t)] en banda base + una copia en 2fc
-    2) Pasabajos para eliminar la componente en 2fc
-    3) Quitar el nivel DC y reescalar: m = (y/Ac - 1) / mu
-    Supone sincronización perfecta (misma frecuencia y fase que el transmisor)."""
-    mezcla = r * 2 * np.cos(2 * np.pi * fc * t)
-    banda_base = filtro_pasabajos(mezcla, fcorte, fs)
-    return (banda_base / Ac - 1) / mu

@@ -102,4 +102,28 @@ plt.legend()
 plt.tight_layout()
 plt.savefig(RESULTS / "13_sobremodulacion_receptores.png", dpi=150)
 
-plt.show()
+
+# =============== 4. Solución: sobremuestreo antes de rectificar ===============
+print("\n=== Sin ruido: detector de envolvente con sobremuestreo ===")
+for L in [1, 2, 4, 8]:
+    ce = correlacion(m, detector_envolvente(s, fs, B, mu, Ac, sobremuestreo=L)[0])
+    print(f"Sobremuestreo x{L} (fs interna = {fs*L/1000:.1f} kHz) | correlación = {ce:.4f}")
+
+corr_env_L4 = []
+for snr in snrs:
+    r, _ = agregar_ruido(s, snr, semilla)
+    corr_env_L4.append(correlacion(m, detector_envolvente(r, fs, B, mu, Ac, sobremuestreo=4)[0]))
+
+plt.figure(figsize=(9, 5))
+plt.plot(snrs, corr_env, "o-", label="Envolvente (fs = 44,1 kHz)")
+plt.plot(snrs, corr_env_L4, "^-", label="Envolvente con sobremuestreo x4")
+plt.plot(snrs, corr_coh, "s-", label="Coherente")
+plt.title("Calidad vs SNR: efecto de corregir el aliasing del detector de envolvente")
+plt.xlabel("SNR (dB)")
+plt.ylabel("Correlación con el mensaje original")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig(RESULTS / "14_correlacion_vs_snr_corregido.png", dpi=150)
+
+plt.show() 
